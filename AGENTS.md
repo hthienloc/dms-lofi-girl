@@ -1,24 +1,21 @@
-# Project Context: dms-lofi-radio
+# Project Context: dms-lofi-radio (Lofi Girl Player)
 
 ## Purpose
-An online Lofi radio streaming plugin for DankMaterialShell (DMS). Allows users to listen to live streams like Lofi Girl directly from the shell bar.
+A dedicated Lofi Girl downloader and player for DankMaterialShell (DMS). Instead of unstable live streams, it downloads high-quality audio mixes for reliable local playback.
 
 ## Key Files
-- `plugin.json`: Metadata and permissions.
-- `LofiWidget.qml`: Core UI and streaming logic.
-    - Uses `mpv` to play online audio streams.
-    - Implements volume debouncing and process management (restart mpv on volume change).
+- `plugin.json`: Metadata (ID: `lofiGirl`).
+- `LofiWidget.qml`: Core UI and logic.
+    - Uses `yt-dlp` to download YouTube mixes to local cache.
+    - Uses `mpv` to play downloaded MP3 files.
+    - Location: `~/.cache/DankMaterialShell/lofi-girl`.
 
-## Stations
-- Lofi Girl (HLS)
-- Chillhop (MP3)
-- Chillsky (Icecast)
-- LofiRadio.ru (MP3)
-- I Love Lofi (MP3)
+## Features
+- **Download Manager**: Tracks which mixes are local vs cloud.
+- **Local Playback**: 100% stable audio via `mpv --loop=inf`.
+- **UI**: Grid-based selection with download progress indicators and animated bars.
 
 ## Technical Details
-- Uses `Proc.runCommand` to execute `mpv` in the background.
-- Uses `pkill -f dms-lofi-radio-stream` to stop playback.
-- Pill features animated dancing bars during active playback.
-- Right-click on pill to Mute/Unmute.
-- Mouse scroll on pill to adjust volume.
+- Uses `Proc.runCommand` for both `yt-dlp` (download) and `mpv` (playback).
+- Volume is managed by restarting the `mpv` process with the new volume value (debounced).
+- Mute/Unmute and Scroll-to-volume logic included.
