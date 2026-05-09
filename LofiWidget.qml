@@ -22,10 +22,12 @@ PluginComponent {
 
     // --- DATA ---
     readonly property var lofiMixes: [
-        { id: "study", name: "Study Session", url: "https://www.youtube.com/watch?v=jfKfPfyJRdk", duration: "1:00:00" },
-        { id: "sleep", name: "Sleep / Chill", url: "https://www.youtube.com/watch?v=rUxyKA_-grg", duration: "1:00:00" },
-        { id: "morning", name: "Morning Coffee", url: "https://www.youtube.com/watch?v=1uOytR-A42s", duration: "1:00:00" },
-        { id: "rainy", name: "Rainy Day", url: "https://www.youtube.com/watch?v=_S0Xp2_6D04", duration: "1:00:00" }
+        { id: "study", name: "Study Session", url: "https://www.youtube.com/watch?v=jfKfPfyJRdk", thumb: "https://i.ytimg.com/vi/jfKfPfyJRdk/mqdefault.jpg" },
+        { id: "sleep", name: "Sleep / Chill", url: "https://www.youtube.com/watch?v=rUxyKA_-grg", thumb: "https://i.ytimg.com/vi/rUxyKA_-grg/mqdefault.jpg" },
+        { id: "morning", name: "Morning Coffee", url: "https://www.youtube.com/watch?v=1uOytR-A42s", thumb: "https://i.ytimg.com/vi/1uOytR-A42s/mqdefault.jpg" },
+        { id: "rainy", name: "Rainy Day", url: "https://www.youtube.com/watch?v=_S0Xp2_6D04", thumb: "https://i.ytimg.com/vi/_S0Xp2_6D04/mqdefault.jpg" },
+        { id: "nature", name: "Nature / Forest", url: "https://www.youtube.com/watch?v=S0Q4gqBUs7c", thumb: "https://i.ytimg.com/vi/S0Q4gqBUs7c/mqdefault.jpg" },
+        { id: "night", name: "Late Night Gaming", url: "https://www.youtube.com/watch?v=bmVKaAV_7-A", thumb: "https://i.ytimg.com/vi/bmVKaAV_7-A/mqdefault.jpg" }
     ]
 
     function saveSetting(key, value) {
@@ -37,7 +39,8 @@ PluginComponent {
 
     // --- AUDIO LOGIC ---
     function checkDownloads() {
-        Proc.runCommand("check-lofi", ["sh", "-c", "ls " + cacheDir], (output, exitCode) => {
+        console.log("[Lofi] Checking local cache...")
+        Proc.runCommand("check-lofi", ["sh", "-c", "mkdir -p '" + cacheDir + "' && ls '" + cacheDir + "'"], (output, exitCode) => {
             let map = {};
             if (exitCode === 0 && output) {
                 let files = output.split("\n");
@@ -49,6 +52,7 @@ PluginComponent {
                 }
             }
             downloadedMixes = map;
+            console.log("[Lofi] Found", Object.keys(map).length, "downloaded mixes")
         }, 0);
     }
 
@@ -56,13 +60,14 @@ PluginComponent {
         if (downloadingMixes[mix.id]) return;
         
         let newDownloading = Object.assign({}, downloadingMixes);
-        newDownloading[mix.id] = 0.01; // Start state
+        newDownloading[mix.id] = true;
         downloadingMixes = newDownloading;
 
         // Use yt-dlp to download as mp3
         let target = cacheDir + "/" + mix.id + ".mp3";
-        let cmd = "mkdir -p " + cacheDir + " && yt-dlp -x --audio-format mp3 -o '" + target + "' '" + mix.url + "'";
+        let cmd = "mkdir -p '" + cacheDir + "' && yt-dlp -x --audio-format mp3 -o '" + target + "' '" + mix.url + "'";
         
+        console.warn("[Lofi] Starting download for:", mix.name)
         Proc.runCommand("download-" + mix.id, ["bash", "-c", cmd], (o, exitCode) => {
             let current = Object.assign({}, downloadingMixes);
             delete current[mix.id];
@@ -72,7 +77,8 @@ PluginComponent {
                 ToastService.showInfo("Downloaded " + mix.name);
                 checkDownloads();
             } else {
-                ToastService.showError("Failed to download " + mix.name);
+                ToastService.showError("Failed to download " + mix.name + ". Check your connection or yt-dlp installation.");
+                console.error("[Lofi] yt-dlp error:", o)
             }
         }, 0);
     }
@@ -156,7 +162,7 @@ PluginComponent {
     // --- UI: PILL ---
     horizontalBarPill: Component {
         Item {
-            implicitWidth: pillRow.implicitWidth + 8
+            implicitWidth: pillRow.implicitWidth + 12
             implicitHeight: 32
 
             MouseArea {
@@ -226,13 +232,13 @@ PluginComponent {
 
     // --- UI: POPOUT ---
     popoutWidth: 380
-    popoutHeight: 500
+    popoutHeight: 520
 
     popoutContent: Component {
         PopoutComponent {
             width: root.popoutWidth
             headerText: "Lofi Girl Player"
-            detailsText: root.isPlaying ? "Listening to " + root.currentMixName : "Choose a mix to play"
+            detailsText: root.isPlaying ? "Now Playing: " + root.currentMixName : "Select a mix to download/play"
             showCloseButton: false
 
             Column {
@@ -257,7 +263,7 @@ PluginComponent {
                     }
 
                     DankSlider {
-                        width: parent.width - 80
+                        width: parent.width - 120
                         value: root.masterVolume
                         minimum: 0; maximum: 100
                         showValue: true; unit: "%"
@@ -265,6 +271,17 @@ PluginComponent {
                             root.masterVolume = v;
                             if (v > 0 && root.isMuted) root.isMuted = false;
                             volumeDebounceTimer.restart();
+                        }
+                    }
+
+                    DankIcon {
+                        name: "refresh"
+                        size: 24
+                        color: Theme.primary
+                        anchors.verticalCenter: parent.verticalCenter
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: root.checkDownloads()
                         }
                     }
 
@@ -281,86 +298,121 @@ PluginComponent {
                     }
                 }
 
-                // Mix List
-                Column {
+                // Mix List with Scroll
+                ScrollView {
                     width: parent.width
-                    spacing: Theme.spacingS
+                    height: 350
+                    clip: true
+                    contentWidth: parent.width
 
-                    Repeater {
-                        model: root.lofiMixes
-                        delegate: Rectangle {
-                            width: parent.width
-                            height: 60
-                            radius: 12
-                            color: root.currentMixName === modelData.name ? Theme.primary : Theme.surfaceContainerHigh
-                            
-                            Row {
-                                anchors.fill: parent
-                                anchors.leftMargin: Theme.spacingM
-                                anchors.rightMargin: Theme.spacingM
-                                spacing: Theme.spacingM
+                    Column {
+                        width: parent.width - 16
+                        spacing: Theme.spacingS
 
-                                DankIcon {
-                                    name: root.downloadedMixes[modelData.id] ? 
-                                          (root.currentMixName === modelData.name && root.isPlaying ? "pause_circle" : "play_circle") : 
-                                          "download_for_offline"
-                                    size: 32
-                                    color: root.currentMixName === modelData.name ? Theme.onPrimary : Theme.primary
-                                    anchors.verticalCenter: parent.verticalCenter
+                        Repeater {
+                            model: root.lofiMixes
+                            delegate: Rectangle {
+                                width: parent.width
+                                height: 70
+                                radius: 12
+                                color: root.currentMixName === modelData.name ? Theme.primary : Theme.surfaceContainerHigh
+                                border.width: 1
+                                border.color: root.currentMixName === modelData.name ? Theme.primary : "transparent"
+                                
+                                Row {
+                                    anchors.fill: parent
+                                    anchors.leftMargin: Theme.spacingS
+                                    anchors.rightMargin: Theme.spacingM
+                                    spacing: Theme.spacingM
+
+                                    // Thumbnail with rounded corners
+                                    Rectangle {
+                                        width: 80
+                                        height: 50
+                                        radius: 6
+                                        color: Theme.surfaceContainer
+                                        clip: true
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        
+                                        Image {
+                                            anchors.fill: parent
+                                            source: modelData.thumb
+                                            fillMode: Image.PreserveAspectCrop
+                                            asynchronous: true
+                                            opacity: status === Image.Ready ? 1 : 0
+                                            Behavior on opacity { NumberAnimation { duration: 250 } }
+                                        }
+
+                                        Rectangle {
+                                            anchors.fill: parent
+                                            color: "black"
+                                            opacity: 0.3
+                                            visible: root.currentMixName === modelData.name && root.isPlaying
+                                            DankIcon {
+                                                name: "equalizer"
+                                                size: 24
+                                                color: "white"
+                                                anchors.centerIn: parent
+                                            }
+                                        }
+                                    }
+
+                                    Column {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        width: parent.width - 150
+                                        
+                                        StyledText {
+                                            text: modelData.name
+                                            font.pixelSize: Theme.fontSizeMedium
+                                            font.weight: Font.Bold
+                                            color: root.currentMixName === modelData.name ? Theme.onPrimary : Theme.surfaceText
+                                            elide: Text.ElideRight
+                                        }
+                                        
+                                        StyledText {
+                                            text: root.downloadingMixes[modelData.id] ? "Downloading..." : (root.downloadedMixes[modelData.id] ? "Available Offline" : "Click to Download")
+                                            font.pixelSize: 10
+                                            color: root.currentMixName === modelData.name ? Theme.onPrimary : Theme.surfaceVariantText
+                                            opacity: 0.8
+                                         elide: Text.ElideRight
+                                        }
+                                    }
+
+                                    Item {
+                                        width: 32
+                                        height: 32
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        
+                                        BusyIndicator {
+                                            anchors.fill: parent
+                                            visible: !!root.downloadingMixes[modelData.id]
+                                            running: visible
+                                        }
+
+                                        DankIcon {
+                                            anchors.centerIn: parent
+                                            name: root.downloadedMixes[modelData.id] ? 
+                                                  (root.currentMixName === modelData.name && root.isPlaying ? "pause_circle" : "play_circle") : 
+                                                  "download_for_offline"
+                                            size: 28
+                                            color: root.currentMixName === modelData.name ? Theme.onPrimary : Theme.primary
+                                            visible: !root.downloadingMixes[modelData.id]
+                                        }
+                                    }
                                 }
 
-                                Column {
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    width: parent.width - 100
-                                    
-                                    StyledText {
-                                        text: modelData.name
-                                        font.pixelSize: Theme.fontSizeMedium
-                                        font.weight: Font.Bold
-                                        color: root.currentMixName === modelData.name ? Theme.onPrimary : Theme.surfaceText
-                                    }
-                                    
-                                    StyledText {
-                                        text: root.downloadingMixes[modelData.id] ? "Downloading..." : (root.downloadedMixes[modelData.id] ? "Ready to play" : "Cloud (Need Download)")
-                                        font.pixelSize: 10
-                                        color: root.currentMixName === modelData.name ? Theme.onPrimary : Theme.surfaceVariantText
-                                        opacity: 0.8
-                                    }
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: root.toggleMix(modelData)
                                 }
-
-                                // Status Indicator
-                                Item {
-                                    width: 32
-                                    height: 32
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    
-                                    BusyIndicator {
-                                        anchors.fill: parent
-                                        visible: !!root.downloadingMixes[modelData.id]
-                                        running: visible
-                                    }
-
-                                    DankIcon {
-                                        anchors.centerIn: parent
-                                        name: "check_circle"
-                                        size: 16
-                                        color: root.currentMixName === modelData.name ? Theme.onPrimary : Theme.primary
-                                        visible: root.downloadedMixes[modelData.id] && !root.downloadingMixes[modelData.id]
-                                    }
-                                }
-                            }
-
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: root.toggleMix(modelData)
                             }
                         }
                     }
                 }
 
                 StyledText {
-                    text: "Downloads are saved in ~/.cache/DankMaterialShell/lofi-girl"
+                    text: "Files saved in ~/.cache/DankMaterialShell/lofi-girl"
                     font.pixelSize: 8
                     color: Theme.surfaceVariantText
                     horizontalAlignment: Text.AlignHCenter
