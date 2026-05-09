@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import Quickshell.Io
 import qs.Common
 import qs.Services
 import qs.Widgets
@@ -8,62 +9,119 @@ import qs.Modules.Plugins
 PluginComponent {
     id: root
 
-    // --- STATE ---
-    property string currentStation: ""
-    property string currentUrl: ""
+    // --- SETTINGS ---
+    readonly property string cacheDir: "/home/loccun/.cache/DankMaterialShell/lofi-girl"
     property int masterVolume: pluginData.defaultVolume !== undefined ? parseInt(pluginData.defaultVolume) : 75
+
+    // --- STATE ---
+    property string currentMixName: ""
     property bool isPlaying: false
     property bool isMuted: false
+    property var downloadedMixes: ({}) // { "mixId": true }
+    property var downloadingMixes: ({}) // { "mixId": progress }
 
-    // --- CONFIG ---
-    readonly property var stations: [
-        { name: "Lofi Girl", icon: "female", url: "http://92.118.206.166:30236/live_audio/index.m3u8" },
-        { name: "Chillhop", icon: "icecream", url: "https://streams.fluxfm.de/Chillhop/mp3-128/streams.fluxfm.de/" },
-        { name: "Chillsky", icon: "cloud", url: "https://lfhh.radioca.st/stream" },
-        { name: "LofiRadio.ru", icon: "nature_people", url: "https://lofiradio.ru/asmr_mp3_128" },
-        { name: "I Love Lofi", icon: "favorite", url: "https://streams.ilovemusic.de/ilovemusic-iloveradio17.mp3" }
+    // --- DATA ---
+    readonly property var lofiMixes: [
+        { id: "study", name: "Study Session", url: "https://www.youtube.com/watch?v=jfKfPfyJRdk", duration: "1:00:00" },
+        { id: "sleep", name: "Sleep / Chill", url: "https://www.youtube.com/watch?v=rUxyKA_-grg", duration: "1:00:00" },
+        { id: "morning", name: "Morning Coffee", url: "https://www.youtube.com/watch?v=1uOytR-A42s", duration: "1:00:00" },
+        { id: "rainy", name: "Rainy Day", url: "https://www.youtube.com/watch?v=_S0Xp2_6D04", duration: "1:00:00" }
     ]
 
+    function saveSetting(key, value) {
+        try {
+            pluginService?.savePluginData(pluginId, key, value);
+            if (pluginData) pluginData[key] = value;
+        } catch(e) {}
+    }
+
     // --- AUDIO LOGIC ---
-    function playStation(station) {
-        if (currentStation === station.name && isPlaying) {
+    function checkDownloads() {
+        Proc.runCommand("check-lofi", ["sh", "-c", "ls " + cacheDir], (output, exitCode) => {
+            let map = {};
+            if (exitCode === 0 && output) {
+                let files = output.split("\n");
+                for (let f of files) {
+                    if (f.endsWith(".mp3")) {
+                        let id = f.replace(".mp3", "");
+                        map[id] = true;
+                    }
+                }
+            }
+            downloadedMixes = map;
+        }, 0);
+    }
+
+    function downloadMix(mix) {
+        if (downloadingMixes[mix.id]) return;
+        
+        let newDownloading = Object.assign({}, downloadingMixes);
+        newDownloading[mix.id] = 0.01; // Start state
+        downloadingMixes = newDownloading;
+
+        // Use yt-dlp to download as mp3
+        let target = cacheDir + "/" + mix.id + ".mp3";
+        let cmd = "mkdir -p " + cacheDir + " && yt-dlp -x --audio-format mp3 -o '" + target + "' '" + mix.url + "'";
+        
+        Proc.runCommand("download-" + mix.id, ["bash", "-c", cmd], (o, exitCode) => {
+            let current = Object.assign({}, downloadingMixes);
+            delete current[mix.id];
+            downloadingMixes = current;
+            
+            if (exitCode === 0) {
+                ToastService.showInfo("Downloaded " + mix.name);
+                checkDownloads();
+            } else {
+                ToastService.showError("Failed to download " + mix.name);
+            }
+        }, 0);
+    }
+
+    function toggleMix(mix) {
+        if (!downloadedMixes[mix.id]) {
+            downloadMix(mix);
+            return;
+        }
+
+        if (currentMixName === mix.name && isPlaying) {
             stopAll();
             return;
         }
 
         stopAll();
-        currentStation = station.name;
-        currentUrl = station.url;
+        currentMixName = mix.name;
         isPlaying = true;
         isMuted = false;
         
-        startMpv();
+        startMpv(mix.id);
     }
 
-    function startMpv() {
-        if (!isPlaying || currentUrl === "") return;
+    function startMpv(mixId) {
+        if (!isPlaying) return;
         
         let vol = isMuted ? 0 : masterVolume;
-        // Use a unique title so we can pkill safely
-        let cmd = "mpv --no-video --no-config --volume=" + vol + " --title='dms-lofi-radio-stream' '" + currentUrl + "' > /dev/null 2>&1";
+        let filePath = cacheDir + "/" + mixId + ".mp3";
+        let cmd = "mpv --no-video --no-config --loop=inf --volume=" + vol + " --title='dms-lofi-girl-local' '" + filePath + "' > /dev/null 2>&1";
         
         Proc.runCommand("play-lofi", ["bash", "-c", cmd], null, 0);
     }
 
     function stopAll() {
         isPlaying = false;
-        currentStation = "";
-        currentUrl = "";
-        Proc.runCommand("stop-lofi", ["bash", "-c", "pkill -f dms-lofi-radio-stream"], null, 0);
+        currentMixName = "";
+        Proc.runCommand("stop-lofi", ["bash", "-c", "pkill -f dms-lofi-girl-local"], null, 0);
     }
 
     function toggleMute() {
         isMuted = !isMuted;
         if (isPlaying) {
-            // Restart mpv with new volume
-            Proc.runCommand("kill-for-mute", ["bash", "-c", "pkill -f dms-lofi-radio-stream"], (o, e) => {
-                startMpv();
-            }, 0);
+            // Find active mix id
+            let mix = lofiMixes.find(m => m.name === currentMixName);
+            if (mix) {
+                Proc.runCommand("kill-for-mute", ["bash", "-c", "pkill -f dms-lofi-girl-local"], (o, e) => {
+                    startMpv(mix.id);
+                }, 0);
+            }
         }
     }
 
@@ -81,11 +139,18 @@ PluginComponent {
         interval: 300
         onTriggered: {
             if (isPlaying) {
-                Proc.runCommand("kill-for-vol", ["bash", "-c", "pkill -f dms-lofi-radio-stream"], (o, e) => {
-                    startMpv();
-                }, 0);
+                let mix = lofiMixes.find(m => m.name === currentMixName);
+                if (mix) {
+                    Proc.runCommand("kill-for-vol", ["bash", "-c", "pkill -f dms-lofi-girl-local"], (o, e) => {
+                        startMpv(mix.id);
+                    }, 0);
+                }
             }
         }
+    }
+
+    Component.onCompleted: {
+        checkDownloads();
     }
 
     // --- UI: PILL ---
@@ -114,7 +179,7 @@ PluginComponent {
                 spacing: Theme.spacingS
 
                 DankIcon {
-                    name: root.isMuted ? "volume_off" : (root.isPlaying ? "radio" : "radio_button_unchecked")
+                    name: root.isMuted ? "volume_off" : (root.isPlaying ? "music_note" : "auto_awesome")
                     size: 18
                     color: root.isPlaying ? Theme.primary : Theme.surfaceVariantText
                     anchors.verticalCenter: parent.verticalCenter
@@ -146,7 +211,7 @@ PluginComponent {
                 }
 
                 StyledText {
-                    text: root.isPlaying ? root.currentStation : "Lofi"
+                    text: root.isPlaying ? root.currentMixName : "Lofi Girl"
                     visible: root.isPlaying
                     font.pixelSize: Theme.fontSizeSmall
                     font.weight: Font.Bold
@@ -160,14 +225,14 @@ PluginComponent {
     verticalBarPill: horizontalBarPill
 
     // --- UI: POPOUT ---
-    popoutWidth: 350
-    popoutHeight: 450
+    popoutWidth: 380
+    popoutHeight: 500
 
     popoutContent: Component {
         PopoutComponent {
             width: root.popoutWidth
-            headerText: "Lofi Radio"
-            detailsText: root.isPlaying ? "Now Playing: " + root.currentStation : "Select a station to start"
+            headerText: "Lofi Girl Player"
+            detailsText: root.isPlaying ? "Listening to " + root.currentMixName : "Choose a mix to play"
             showCloseButton: false
 
             Column {
@@ -175,7 +240,7 @@ PluginComponent {
                 anchors.horizontalCenter: parent.horizontalCenter
                 spacing: Theme.spacingL
 
-                // Volume Controls
+                // Control Bar
                 Row {
                     width: parent.width
                     spacing: Theme.spacingM
@@ -216,64 +281,86 @@ PluginComponent {
                     }
                 }
 
-                // Station Grid
-                Flow {
+                // Mix List
+                Column {
                     width: parent.width
                     spacing: Theme.spacingS
 
                     Repeater {
-                        model: root.stations
+                        model: root.lofiMixes
                         delegate: Rectangle {
-                            width: (parent.width - Theme.spacingS) / 2
-                            height: 100
+                            width: parent.width
+                            height: 60
                             radius: 12
-                            color: root.currentStation === modelData.name ? Theme.primary : Theme.surfaceContainerHigh
+                            color: root.currentMixName === modelData.name ? Theme.primary : Theme.surfaceContainerHigh
                             
-                            Column {
-                                anchors.centerIn: parent
-                                spacing: Theme.spacingS
+                            Row {
+                                anchors.fill: parent
+                                anchors.leftMargin: Theme.spacingM
+                                anchors.rightMargin: Theme.spacingM
+                                spacing: Theme.spacingM
+
                                 DankIcon {
-                                    name: modelData.icon
+                                    name: root.downloadedMixes[modelData.id] ? 
+                                          (root.currentMixName === modelData.name && root.isPlaying ? "pause_circle" : "play_circle") : 
+                                          "download_for_offline"
                                     size: 32
-                                    color: root.currentStation === modelData.name ? Theme.onPrimary : Theme.primary
-                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    color: root.currentMixName === modelData.name ? Theme.onPrimary : Theme.primary
+                                    anchors.verticalCenter: parent.verticalCenter
                                 }
-                                StyledText {
-                                    text: modelData.name
-                                    font.pixelSize: Theme.fontSizeMedium
-                                    font.weight: Font.Bold
-                                    color: root.currentStation === modelData.name ? Theme.onPrimary : Theme.surfaceText
-                                    anchors.horizontalCenter: parent.horizontalCenter
+
+                                Column {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: parent.width - 100
+                                    
+                                    StyledText {
+                                        text: modelData.name
+                                        font.pixelSize: Theme.fontSizeMedium
+                                        font.weight: Font.Bold
+                                        color: root.currentMixName === modelData.name ? Theme.onPrimary : Theme.surfaceText
+                                    }
+                                    
+                                    StyledText {
+                                        text: root.downloadingMixes[modelData.id] ? "Downloading..." : (root.downloadedMixes[modelData.id] ? "Ready to play" : "Cloud (Need Download)")
+                                        font.pixelSize: 10
+                                        color: root.currentMixName === modelData.name ? Theme.onPrimary : Theme.surfaceVariantText
+                                        opacity: 0.8
+                                    }
+                                }
+
+                                // Status Indicator
+                                Item {
+                                    width: 32
+                                    height: 32
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    
+                                    BusyIndicator {
+                                        anchors.fill: parent
+                                        visible: !!root.downloadingMixes[modelData.id]
+                                        running: visible
+                                    }
+
+                                    DankIcon {
+                                        anchors.centerIn: parent
+                                        name: "check_circle"
+                                        size: 16
+                                        color: root.currentMixName === modelData.name ? Theme.onPrimary : Theme.primary
+                                        visible: root.downloadedMixes[modelData.id] && !root.downloadingMixes[modelData.id]
+                                    }
                                 }
                             }
 
                             MouseArea {
                                 anchors.fill: parent
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: root.playStation(modelData)
-                            }
-
-                            // Active glow for playing station
-                            Rectangle {
-                                anchors.fill: parent
-                                radius: 12
-                                color: "transparent"
-                                border.color: Theme.onPrimary
-                                border.width: 2
-                                visible: root.currentStation === modelData.name && root.isPlaying
-                                
-                                SequentialAnimation on opacity {
-                                    loops: Animation.Infinite
-                                    NumberAnimation { from: 0.2; to: 0.8; duration: 1000 }
-                                    NumberAnimation { from: 0.8; to: 0.2; duration: 1000 }
-                                }
+                                onClicked: root.toggleMix(modelData)
                             }
                         }
                     }
                 }
 
                 StyledText {
-                    text: "Right-click icon to mute. Scroll on icon to adjust volume."
+                    text: "Downloads are saved in ~/.cache/DankMaterialShell/lofi-girl"
                     font.pixelSize: 8
                     color: Theme.surfaceVariantText
                     horizontalAlignment: Text.AlignHCenter

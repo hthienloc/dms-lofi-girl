@@ -1,11 +1,11 @@
 {
-    "id": "lofiRadio",
-    "name": "Lofi Radio",
-    "description": "Stream online Lofi radio stations directly from your bar.",
-    "version": "1.0.0",
+    "id": "lofiGirl",
+    "name": "Lofi Girl Player",
+    "description": "Download and play your favorite Lofi Girl mixes locally from your bar.",
+    "version": "1.2.0",
     "license": "GPL-3.0",
     "author": "Gemini CLI",
-    "icon": "radio",
+    "icon": "auto_awesome",
     "type": "widget",
     "capabilities": [
         "dankbar-widget"
