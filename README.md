@@ -1,4 +1,4 @@
-# Lofi Girl Player for DankMaterialShell
+# Lofi Girl for DankMaterialShell
 
 A beautiful Lofi Girl downloader and player plugin for [DankMaterialShell](https://github.com/DankMaterialShell). Download your favorite mixes for a 100% stable, offline-capable listening experience.
 

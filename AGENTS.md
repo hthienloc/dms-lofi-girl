@@ -1,4 +1,4 @@
-# Project Context: dms-lofi-radio (Lofi Girl Player)
+# Project Context: dms-lofi-girl
 
 ## Purpose
 A dedicated Lofi Girl downloader and player for DankMaterialShell (DMS). Instead of unstable live streams, it downloads high-quality audio mixes for reliable local playback.
