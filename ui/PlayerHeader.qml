@@ -15,9 +15,10 @@ Row {
     signal stopClicked()
 
     width: parent.width
-    height: 40 // Explicit height for the header row
+    height: 40
     spacing: 12
 
+    // Volume/Mute Button
     DankIcon {
         name: isMuted ? "volume_off" : "volume_up"
         size: 24
@@ -26,22 +27,21 @@ Row {
 
         MouseArea {
             anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
             onClicked: root.muteToggled()
         }
-
     }
 
     DankSlider {
-        width: parent.width - (isPlaying ? 100 : 60) // Adjust width based on stop button visibility
+        width: parent.width - (isPlaying ? 100 : 60)
         value: volume
         minimum: 0
         maximum: 100
         anchors.verticalCenter: parent.verticalCenter
-        onSliderValueChanged: (v) => {
-            return root.requestVolumeChange(v);
-        }
+        onSliderValueChanged: (v) => root.requestVolumeChange(v)
     }
 
+    // Stop Button
     DankIcon {
         name: "stop_circle"
         size: 28
@@ -51,9 +51,8 @@ Row {
 
         MouseArea {
             anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
             onClicked: root.stopClicked()
         }
-
     }
-
 }
