@@ -1,0 +1,19 @@
+{
+    "id": "lofiRadio",
+    "name": "Lofi Radio",
+    "description": "Stream online Lofi radio stations directly from your bar.",
+    "version": "1.0.0",
+    "license": "GPL-3.0",
+    "author": "Gemini CLI",
+    "icon": "radio",
+    "type": "widget",
+    "capabilities": [
+        "dankbar-widget"
+    ],
+    "component": "./LofiWidget.qml",
+    "permissions": [
+        "settings_read",
+        "settings_write",
+        "process"
+    ]
+}
