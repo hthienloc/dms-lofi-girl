@@ -275,7 +275,7 @@ PluginComponent {
                 anchors.horizontalCenter: parent.horizontalCenter
                 spacing: 16
 
-                PlayerHeader {
+                MediaHeader {
                     volume: root.masterVolume
                     isMuted: root.isMuted
                     isPlaying: root.isPlaying

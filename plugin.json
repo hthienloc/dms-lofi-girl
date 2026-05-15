@@ -1,19 +1,19 @@
 {
-    "id": "lofiGirl",
-    "name": "Lofi Girl",
-    "description": "Download and play your favorite Lofi Girl mixes locally from your bar.",
-    "version": "1.0.0",
-    "license": "GPL-3.0",
-    "author": "Loc Huynh",
-    "icon": "auto_awesome",
-    "type": "widget",
-    "capabilities": [
-        "dankbar-widget"
-    ],
-    "component": "./LofiWidget.qml",
-    "permissions": [
-        "settings_read",
-        "settings_write",
-        "process"
-    ]
+  "id": "lofiGirl",
+  "name": "Lofi Girl",
+  "description": "Download and play your favorite Lofi Girl mixes locally from your bar.",
+  "version": "1.2.0",
+  "license": "GPL-3.0",
+  "author": "Loc Huynh",
+  "icon": "auto_awesome",
+  "type": "widget",
+  "capabilities": [
+    "dankbar-widget"
+  ],
+  "component": "./LofiWidget.qml",
+  "permissions": [
+    "settings_read",
+    "settings_write",
+    "process"
+  ]
 }
