@@ -284,12 +284,12 @@ PluginComponent {
                     title: root.currentMixName
                     volume: root.masterVolume / 100
                     isMuted: root.isMuted
-                    showStopButton: root.isPlaying || root.isPaused
-                    stopButtonEnabled: true
+                    showStopButton: true
+                    stopButtonEnabled: root.isPlaying || root.isPaused
                     onMuteToggled: root.toggleMute()
                     onStopClicked: root.stopAll()
                     onVolumeChangeRequested: v => {
-                        root.masterVolume = v;
+                        root.masterVolume = v * 100;
                         root.updateMpvVolume();
                     }
                 }

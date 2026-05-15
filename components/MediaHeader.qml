@@ -3,101 +3,76 @@ import QtQuick.Controls
 import qs.Common
 import qs.Widgets
 
-Rectangle {
+Row {
     id: root
-    
+    width: parent.width
+    height: 40
+    spacing: Theme.spacingS
+
     property string title: ""
     property real volume: 1.0
     property bool isMuted: false
     property bool showStopButton: false
     property bool stopButtonEnabled: false
-    
+
     signal volumeChangeRequested(real val)
     signal muteToggled()
     signal stopClicked()
-    
-    width: parent.width
-    height: 60
-    color: "transparent"
-    
-    Row {
-        width: parent.width
-        height: parent.height
-        spacing: 16
-        
-        DankIcon {
-            name: root.isMuted || root.volume === 0 ? "volume_off" : (root.volume < 0.5 ? "volume_down" : "volume_up")
-            size: 24
-            color: Theme.primary
-            anchors.verticalCenter: parent.verticalCenter
-            
-            MouseArea {
-                anchors.fill: parent
-                onClicked: root.muteToggled()
-            }
+
+    DankIcon {
+        name: root.isMuted || root.volume === 0 ? "volume_off" : "volume_up"
+        size: 22
+        color: root.isMuted ? Theme.error : (root.stopButtonEnabled ? Theme.primary : Theme.surfaceVariantText)
+        anchors.verticalCenter: parent.verticalCenter
+        MouseArea {
+            anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            onClicked: root.muteToggled()
         }
-        
-        Slider {
-            id: volumeSlider
-            from: 0
-            to: 1
-            value: root.volume
-            anchors.verticalCenter: parent.verticalCenter
-            width: parent.width - 100
-            
-            onMoved: root.volumeChangeRequested(value)
-            
-            background: Rectangle {
-                x: volumeSlider.leftPadding
-                y: volumeSlider.topPadding + volumeSlider.availableHeight / 2 - height / 2
-                implicitWidth: 200
-                implicitHeight: 4
-                width: volumeSlider.availableWidth
-                height: implicitHeight
-                radius: 2
-                color: Theme.surfaceContainerHighest
-                
-                Rectangle {
-                    width: volumeSlider.visualPosition * parent.width
-                    height: parent.height
-                    color: Theme.primary
-                    radius: 2
+    }
+
+    DankSlider {
+        id: volumeSlider
+        value: root.volume * 100
+        width: parent.width - 80
+        minimum: 0
+        maximum: 100
+        centerMinimum: false
+        unit: "%"
+        showValue: true
+        wheelEnabled: false
+        onSliderValueChanged: v => {
+            root.volumeChangeRequested(v / 100)
+            if (v > 0 && root.isMuted) root.isMuted = false
+        }
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.NoButton
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onWheel: wheel => {
+                var delta = wheel.angleDelta.y > 0 ? 5 : -5
+                var newVol = Math.min(100, Math.max(0, root.volume * 100 + delta))
+                if (newVol !== root.volume * 100) {
+                    root.volume = newVol / 100
+                    if (newVol > 0 && root.isMuted) root.isMuted = false
+                    root.volumeChangeRequested(root.volume)
                 }
             }
-            
-            handle: Rectangle {
-                x: volumeSlider.leftPadding + volumeSlider.visualPosition * (volumeSlider.availableWidth - width)
-                y: volumeSlider.topPadding + volumeSlider.availableHeight / 2 - height / 2
-                implicitWidth: 12
-                implicitHeight: 12
-                radius: 6
-                color: Theme.primary
-                border.color: Theme.surface
-                border.width: 1
-            }
         }
-        
-        StyledText {
-            text: Math.round(root.volume * 100) + "%"
-            font.pixelSize: 12
-            color: Theme.surfaceVariantText
-            anchors.verticalCenter: parent.verticalCenter
-            width: 30
-        }
-        
-        DankIcon {
-            name: "cancel"
-            size: 24
-            color: root.stopButtonEnabled ? Theme.error : Theme.surfaceVariantText
-            anchors.verticalCenter: parent.verticalCenter
-            visible: root.showStopButton
-            opacity: root.stopButtonEnabled ? 1.0 : 0.5
+    }
 
-            MouseArea {
-                anchors.fill: parent
-                cursorShape: root.stopButtonEnabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                onClicked: if (root.stopButtonEnabled) root.stopClicked()
-            }
+    DankIcon {
+        name: "cancel"
+        size: 24
+        color: root.stopButtonEnabled ? Theme.error : Theme.surfaceVariantText
+        anchors.verticalCenter: parent.verticalCenter
+        visible: root.showStopButton
+        opacity: root.stopButtonEnabled ? 1.0 : 0.5
+        MouseArea {
+            anchors.fill: parent
+            cursorShape: root.stopButtonEnabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+            onClicked: if (root.stopButtonEnabled) root.stopClicked()
         }
     }
 }
