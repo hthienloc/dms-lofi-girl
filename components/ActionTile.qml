@@ -11,6 +11,10 @@ Rectangle {
     property bool active: false
     property color activeColor: Theme.primary
     property color onActiveColor: Theme.onPrimary
+    property color borderColor: "transparent"
+    property real borderWidth: 0
+    property color textColor: Theme.surfaceText
+    property int titleFontSize: 14
     
     signal clicked()
     signal pressAndHold()
@@ -19,6 +23,8 @@ Rectangle {
     
     radius: Theme.cornerRadius
     color: active ? activeColor : Theme.surfaceContainerHigh
+    border.color: borderColor
+    border.width: borderWidth
     
     Behavior on color { ColorAnimation { duration: 200 } }
 
@@ -29,15 +35,15 @@ Rectangle {
         DankIcon {
             name: root.iconName
             size: 32
-            color: root.active ? root.onActiveColor : Theme.surfaceVariantText
+            color: root.active ? root.onActiveColor : root.textColor
             anchors.horizontalCenter: parent.horizontalCenter
         }
         
         StyledText {
             text: root.title
-            font.pixelSize: 14
+            font.pixelSize: root.titleFontSize
             font.weight: Font.Medium
-            color: root.active ? root.onActiveColor : Theme.surfaceText
+            color: root.active ? root.onActiveColor : root.textColor
             anchors.horizontalCenter: parent.horizontalCenter
             elide: Text.ElideRight
             width: parent.parent.width - 16
@@ -47,7 +53,7 @@ Rectangle {
         StyledText {
             text: root.subtitle
             font.pixelSize: 11
-            color: root.active ? root.onActiveColor : Theme.surfaceVariantText
+            color: root.active ? root.onActiveColor : root.textColor
             anchors.horizontalCenter: parent.horizontalCenter
             visible: text !== ""
         }
