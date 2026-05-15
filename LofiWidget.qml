@@ -7,6 +7,7 @@ import qs.Services
 import qs.Widgets
 import "logic/LofiManager.js" as Manager
 import "ui"
+import "./components"
 
 PluginComponent {
     id: root
@@ -31,6 +32,10 @@ PluginComponent {
     property var downloadedMixes: ({})
     property var downloadingMixes: ({})
     property var processingMixes: ({})
+    readonly property int coverSize: 120
+    readonly property int iconSize: Theme.iconSizeSmall
+    readonly property int spacing: Theme.spacingS
+    readonly property int fontSize: Theme.fontSizeMedium
     property var lofiMixes: []
     property var lofiVideos: []
     property bool isFetching: false
@@ -276,12 +281,14 @@ PluginComponent {
                 spacing: 16
 
                 MediaHeader {
-                    volume: root.masterVolume
+                    title: root.currentMixName
+                    volume: root.masterVolume / 100
                     isMuted: root.isMuted
-                    isPlaying: root.isPlaying
+                    showStopButton: root.isPlaying || root.isPaused
+                    stopButtonEnabled: true
                     onMuteToggled: root.toggleMute()
                     onStopClicked: root.stopAll()
-                    onRequestVolumeChange: v => {
+                    onVolumeChangeRequested: v => {
                         root.masterVolume = v;
                         root.updateMpvVolume();
                     }

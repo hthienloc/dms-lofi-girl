@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import qs.Common
+import qs.Widgets
 
 Rectangle {
     id: root
@@ -11,7 +12,7 @@ Rectangle {
     property bool showStopButton: false
     property bool stopButtonEnabled: false
     
-    signal volumeChanged(real val)
+    signal volumeChangeRequested(real val)
     signal muteToggled()
     signal stopClicked()
     
@@ -44,7 +45,7 @@ Rectangle {
             anchors.verticalCenter: parent.verticalCenter
             width: parent.width - 100
             
-            onMoved: root.volumeChanged(value)
+            onMoved: root.volumeChangeRequested(value)
             
             background: Rectangle {
                 x: volumeSlider.leftPadding
