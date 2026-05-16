@@ -36,3 +36,11 @@ A beautiful Lofi Girl downloader and player plugin for [DankMaterialShell](https
 ## License
 
 This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
+
+## Roadmap / TODO
+
+- [ ] **Sleep Timer**: Integrate a countdown timer to automatically stop music after a specific duration (e.g., 30m, 1h, 2h).
+- [ ] **Custom YouTube Links**: Add the ability for users to paste their own YouTube links or playlists for downloading and offline playback.
+- [ ] **Advanced Visualizer**: Implement a full-featured audio visualizer in the popout UI that reacts to the current music.
+- [ ] **Desktop Notifications**: Show a system notification when a mix finishes downloading or when a new session starts.
+- [ ] **Mini-Player Mode**: A more compact version of the popout for focused study sessions.
