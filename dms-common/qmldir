@@ -1,0 +1,3 @@
+module dms.common
+MediaHeader 1.0 MediaHeader.qml
+PluginHeader 1.0 PluginHeader.qml

@@ -8,6 +8,7 @@ import qs.Widgets
 import "logic/LofiManager.js" as Manager
 import "ui"
 import "./components"
+import "./dms-common"
 
 PluginComponent {
     id: root
